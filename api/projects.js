@@ -1,5 +1,3 @@
-const { createClient } = require('@supabase/supabase-js')
-
 function toRemoteProject(project) {
   return {
     id: project.id,
@@ -27,53 +25,112 @@ function fromRemoteProject(item) {
   }
 }
 
-module.exports = async function handler(req, res) {
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY
+async function githubRequest(path, options = {}) {
+  const githubToken = process.env.GH_TOKEN
+  const githubRepo = process.env.GH_REPO || 'fernandanaya05-tech/naya-hub'
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    return res.status(500).json({ error: 'Missing Supabase server env vars' })
+  if (!githubToken || !githubRepo) {
+    throw new Error('Missing GitHub sync credentials')
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false }
+  const response = await fetch(`https://api.github.com/${path.replace(/^\//, '')}`, {
+    ...options,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${githubToken}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(options.headers || {})
+    }
   })
 
-  if (req.method === 'GET') {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false })
+  const text = await response.text()
+  let payload = null
 
-    if (error) {
-      return res.status(500).json({ error: error.message })
-    }
-
-    return res.status(200).json((data || []).map(fromRemoteProject))
+  try {
+    payload = text ? JSON.parse(text) : null
+  } catch {
+    payload = text
   }
 
-  if (req.method === 'POST') {
-    let body = req.body
+  if (!response.ok) {
+    const message = payload && typeof payload === 'object' && payload.message
+      ? payload.message
+      : 'GitHub request failed'
+    throw new Error(`GitHub request failed (${response.status}): ${message}`)
+  }
 
-    if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body)
-      } catch {
-        body = []
+  return payload
+}
+
+async function readProjectsFromGitHub() {
+  const projectsPath = process.env.GH_PROJECTS_FILE || 'data/projects.json'
+
+  try {
+    const file = await githubRequest(`/repos/${process.env.GH_REPO || 'fernandanaya05-tech/naya-hub'}/contents/${projectsPath}`)
+    const content = Buffer.from(file.content, 'base64').toString('utf8')
+    const parsed = JSON.parse(content)
+    return Array.isArray(parsed) ? parsed.map(fromRemoteProject) : []
+  } catch (error) {
+    if (String(error.message).includes('404') || String(error.message).includes('Not Found')) return []
+    throw error
+  }
+}
+
+async function writeProjectsToGitHub(projects) {
+  const projectsPath = process.env.GH_PROJECTS_FILE || 'data/projects.json'
+  const repo = process.env.GH_REPO || 'fernandanaya05-tech/naya-hub'
+  const rows = projects.map(toRemoteProject)
+
+  let existing = null
+
+  try {
+    existing = await githubRequest(`/repos/${repo}/contents/${projectsPath}`)
+  } catch (error) {
+    if (!String(error.message).includes('404') && !String(error.message).includes('Not Found')) {
+      throw error
+    }
+  }
+
+  const content = Buffer.from(JSON.stringify(rows, null, 2) + '\n').toString('base64')
+  const payload = {
+    message: 'chore: sync naya hub projects',
+    content,
+    ...(existing?.sha ? { sha: existing.sha } : {})
+  }
+
+  await githubRequest(`/repos/${repo}/contents/${projectsPath}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  })
+
+  return rows
+}
+
+module.exports = async function handler(req, res) {
+  try {
+    if (req.method === 'GET') {
+      const projects = await readProjectsFromGitHub()
+      return res.status(200).json(projects)
+    }
+
+    if (req.method === 'POST') {
+      let body = req.body
+
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body)
+        } catch {
+          body = []
+        }
       }
+
+      const projects = Array.isArray(body) ? body : []
+      const rows = await writeProjectsToGitHub(projects)
+      return res.status(200).json(rows)
     }
 
-    const projects = Array.isArray(body) ? body : []
-    const rows = projects.map(toRemoteProject)
-
-    const { data, error } = await supabase.from('projects').upsert(rows, { onConflict: 'id' })
-
-    if (error) {
-      return res.status(500).json({ error: error.message })
-    }
-
-    return res.status(200).json(data || [])
+    return res.status(405).json({ error: 'Method not allowed' })
+  } catch (error) {
+    return res.status(500).json({ error: error.message })
   }
-
-  return res.status(405).json({ error: 'Method not allowed' })
 }
