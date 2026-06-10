@@ -1,18 +1,106 @@
 import { useState, useEffect } from 'react'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 const STORAGE_KEY = 'naya_projects'
 
+function getInitialProjects() {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY)
+    return saved ? JSON.parse(saved) : []
+  } catch {
+    return []
+  }
+}
+
+function toRemoteProject(project) {
+  return {
+    id: project.id,
+    created_at: project.createdAt || new Date().toISOString(),
+    title: project.title,
+    description: project.description || '',
+    service: project.service || '',
+    checklist: project.checklist || [],
+    packageName: project.packageName || '',
+    packageDetail: project.packageDetail || ''
+  }
+}
+
+function fromRemoteProject(item) {
+  return {
+    ...item,
+    id: item.id,
+    createdAt: item.created_at,
+    title: item.title,
+    description: item.description,
+    service: item.service,
+    checklist: item.checklist || [],
+    packageName: item.packageName,
+    packageDetail: item.packageDetail
+  }
+}
+
+async function syncProjectsToSupabase(projects) {
+  if (!isSupabaseConfigured || !supabase) return
+
+  const { error } = await supabase.from('projects').upsert(
+    projects.map(toRemoteProject),
+    { onConflict: 'id' }
+  )
+
+  if (error) {
+    console.error('Falha ao sincronizar com o Supabase:', error)
+  }
+}
+
+async function loadProjectsFromSupabase() {
+  if (!isSupabaseConfigured || !supabase) return null
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Falha ao carregar projetos do Supabase:', error)
+    return null
+  }
+
+  return (data || []).map(fromRemoteProject)
+}
+
 export function useProjects() {
-  const [projects, setProjects] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      return saved ? JSON.parse(saved) : []
-    } catch { return [] }
-  })
+  const [projects, setProjects] = useState(getInitialProjects)
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
+    }
+
+    if (isSupabaseConfigured) {
+      syncProjectsToSupabase(projects)
+    }
   }, [projects])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function boot() {
+      if (!isSupabaseConfigured) return
+
+      const remoteProjects = await loadProjectsFromSupabase()
+      if (!ignore && remoteProjects && remoteProjects.length) {
+        setProjects(remoteProjects)
+      }
+    }
+
+    boot()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   function addProject(project) {
     const newProject = {
