@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'naya_projects'
 
@@ -63,101 +62,74 @@ function fromRemoteProject(item) {
   }
 }
 
-async function syncProjectsToSupabase(projects) {
-  if (!isSupabaseConfigured || !supabase) return
-
-  const { error } = await supabase.from('projects').upsert(
-    projects.map(toRemoteProject),
-    { onConflict: 'id' }
-  )
-
-  if (error) {
-    console.error('Falha ao sincronizar com o Supabase:', error)
-  }
+function getApiUrl() {
+  if (typeof window === 'undefined') return '/api/projects'
+  return `${window.location.origin}/api/projects`
 }
 
-async function loadProjectsFromSupabase() {
-  if (!isSupabaseConfigured || !supabase) return null
+async function syncProjectsToApi(projects) {
+  const response = await fetch(getApiUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(projects)
+  })
 
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Falha ao carregar projetos do Supabase:', error)
-    return null
+  if (!response.ok) {
+    throw new Error('Falha ao sincronizar com o backend')
   }
 
-  return (data || []).map(fromRemoteProject)
+  const payload = await response.json()
+  return Array.isArray(payload) ? payload.map(fromRemoteProject) : []
+}
+
+async function loadProjectsFromApi() {
+  const response = await fetch(getApiUrl())
+  if (!response.ok) return null
+
+  const payload = await response.json()
+  return Array.isArray(payload) ? payload.map(fromRemoteProject) : null
 }
 
 export function useProjects() {
   const [projects, setProjects] = useState(getInitialProjects)
-  const initializedRef = useRef(false)
+  const [hasLoaded, setHasLoaded] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
     }
 
-    if (isSupabaseConfigured && supabase && initializedRef.current) {
-      syncProjectsToSupabase(projects)
-    }
-  }, [projects])
+    if (!hasLoaded) return
+    syncProjectsToApi(projects).catch(error => {
+      console.error('Falha ao sincronizar com o backend:', error)
+    })
+  }, [projects, hasLoaded])
 
   useEffect(() => {
     let ignore = false
-    let channel = null
 
     async function boot() {
-      initializedRef.current = true
-
-      if (!isSupabaseConfigured || !supabase) return
-
       const localProjects = getInitialProjects()
-      const remoteProjects = await loadProjectsFromSupabase()
+      setProjects(localProjects)
 
-      if (ignore) return
-
-      if (remoteProjects && remoteProjects.length) {
-        setProjects(mergeProjects(localProjects, remoteProjects))
-      } else if (localProjects.length) {
-        setProjects(localProjects)
-        await syncProjectsToSupabase(localProjects)
+      try {
+        const remoteProjects = await loadProjectsFromApi()
+        if (!ignore && remoteProjects && remoteProjects.length) {
+          setProjects(mergeProjects(localProjects, remoteProjects))
+        }
+      } catch (error) {
+        console.error('Falha ao carregar projetos do backend:', error)
       }
 
-      channel = supabase.channel('projects-sync')
-      channel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'projects' },
-        payload => {
-          if (ignore) return
-
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const incoming = fromRemoteProject(payload.new)
-            setProjects(prev => mergeProjects(prev, [incoming]))
-          }
-
-          if (payload.eventType === 'DELETE') {
-            const removedId = payload.old?.id
-            if (removedId) {
-              setProjects(prev => prev.filter(project => project.id !== removedId))
-            }
-          }
-        }
-      )
-
-      channel.subscribe()
+      if (!ignore) {
+        setHasLoaded(true)
+      }
     }
 
     boot()
 
     return () => {
       ignore = true
-      if (channel) {
-        supabase.removeChannel(channel)
-      }
     }
   }, [])
 
