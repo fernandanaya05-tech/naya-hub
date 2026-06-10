@@ -118,7 +118,13 @@
           {
             "id": "awzu0i55c",
             "text": "Apresentação Proposta",
-            "status": "doing",
+            "status": "done",
+            "note": ""
+          },
+          {
+            "id": "rpkwn4s8d",
+            "text": "Cardd.co",
+            "status": "todo",
             "note": ""
           }
         ]
