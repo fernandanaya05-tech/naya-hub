@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 const STORAGE_KEY = 'naya_projects'
@@ -12,6 +12,28 @@ function getInitialProjects() {
   } catch {
     return []
   }
+}
+
+export function mergeProjects(localProjects, remoteProjects) {
+  const byId = new Map()
+
+  ;[...localProjects, ...remoteProjects].forEach(project => {
+    const existing = byId.get(project.id)
+    if (!existing) {
+      byId.set(project.id, project)
+      return
+    }
+
+    const existingDate = new Date(existing.createdAt || 0).getTime()
+    const incomingDate = new Date(project.createdAt || 0).getTime()
+    byId.set(project.id, incomingDate > existingDate ? project : existing)
+  })
+
+  return Array.from(byId.values()).sort((a, b) => {
+    const aDate = new Date(a.createdAt || 0).getTime()
+    const bDate = new Date(b.createdAt || 0).getTime()
+    return bDate - aDate
+  })
 }
 
 function toRemoteProject(project) {
@@ -72,33 +94,70 @@ async function loadProjectsFromSupabase() {
 
 export function useProjects() {
   const [projects, setProjects] = useState(getInitialProjects)
+  const initializedRef = useRef(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
     }
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && supabase && initializedRef.current) {
       syncProjectsToSupabase(projects)
     }
   }, [projects])
 
   useEffect(() => {
     let ignore = false
+    let channel = null
 
     async function boot() {
-      if (!isSupabaseConfigured) return
+      initializedRef.current = true
 
+      if (!isSupabaseConfigured || !supabase) return
+
+      const localProjects = getInitialProjects()
       const remoteProjects = await loadProjectsFromSupabase()
-      if (!ignore && remoteProjects && remoteProjects.length) {
-        setProjects(remoteProjects)
+
+      if (ignore) return
+
+      if (remoteProjects && remoteProjects.length) {
+        setProjects(mergeProjects(localProjects, remoteProjects))
+      } else if (localProjects.length) {
+        setProjects(localProjects)
+        await syncProjectsToSupabase(localProjects)
       }
+
+      channel = supabase.channel('projects-sync')
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'projects' },
+        payload => {
+          if (ignore) return
+
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const incoming = fromRemoteProject(payload.new)
+            setProjects(prev => mergeProjects(prev, [incoming]))
+          }
+
+          if (payload.eventType === 'DELETE') {
+            const removedId = payload.old?.id
+            if (removedId) {
+              setProjects(prev => prev.filter(project => project.id !== removedId))
+            }
+          }
+        }
+      )
+
+      channel.subscribe()
     }
 
     boot()
 
     return () => {
       ignore = true
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
     }
   }, [])
 
