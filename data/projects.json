@@ -1,5 +1,93 @@
 [
   {
+    "id": "1781811322789",
+    "created_at": "2026-06-18T19:35:22.789Z",
+    "description": "",
+    "service": "",
+    "checklist": [
+      {
+        "id": "estrategia_udqh68",
+        "title": "Estratégia e Conteúdo",
+        "subtitle": "PLANEJAMENTO",
+        "letter": "W",
+        "color": "orange",
+        "items": [
+          {
+            "id": "hewusa4i9",
+            "text": "Briefing e levantamento de objetivos",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "opy5g42me",
+            "text": "Definição da hierarquia de conteúdo",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "6de849gwj",
+            "text": "Copywriting das seções",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "3zmdlyguy",
+            "text": "Estratégia de captação de leads",
+            "status": "todo",
+            "note": ""
+          }
+        ]
+      },
+      {
+        "id": "design_hyu4xq",
+        "title": "Design e Entrega",
+        "subtitle": "EXECUÇÃO",
+        "letter": "D",
+        "color": "orange",
+        "items": [
+          {
+            "id": "hixk15kut",
+            "text": "Wireframe aprovado",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "2no5179zw",
+            "text": "Design da página (alinhado à identidade)",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "u4fzigdky",
+            "text": "Formulário de captação integrado",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "7k79x9qf7",
+            "text": "Configuração de e-mail automático",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "orudlfxym",
+            "text": "Versão responsiva (mobile e desktop)",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "7yy1w057b",
+            "text": "Entrega técnica completa",
+            "status": "todo",
+            "note": ""
+          }
+        ]
+      }
+    ],
+    "packageName": "",
+    "packageDetail": ""
+  },
+  {
     "id": "1781085569884",
     "created_at": "2026-06-10T09:59:29.884Z",
     "description": "",
