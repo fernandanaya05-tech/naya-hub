@@ -1,5 +1,105 @@
 [
   {
+    "id": "1782495814214",
+    "created_at": "2026-06-26T17:43:34.214Z",
+    "description": "",
+    "service": "",
+    "checklist": [
+      {
+        "id": "posicionamento_i0eeu5",
+        "title": "Posicionamento",
+        "subtitle": "ESTRATÉGIA",
+        "letter": "P",
+        "color": "blue",
+        "items": [
+          {
+            "id": "0bevzlmsq",
+            "text": "Briefing estratégico",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "ah1kdmwrm",
+            "text": "Estratégia de posicionamento — propósito, território e promessa",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "1oykv7xto",
+            "text": "Identidade verbal — tom de voz",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "5x1wrojmz",
+            "text": "Aprovação da plataforma estratégica",
+            "status": "todo",
+            "note": ""
+          }
+        ]
+      },
+      {
+        "id": "identidade_visual_prttny",
+        "title": "Identidade Visual",
+        "subtitle": "IDENTIDADE",
+        "letter": "I",
+        "color": "blue",
+        "items": [
+          {
+            "id": "7r2pssd54",
+            "text": "Conceito criativo aprovado",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "uh4qj01kd",
+            "text": "Logotipo principal",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "l3ojuuk15",
+            "text": "Variações e versões do logotipo",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "f37ay8phd",
+            "text": "Paleta de cores oficial",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "nu7z2skdt",
+            "text": "Tipografia oficial",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "szpbqy7at",
+            "text": "Elementos gráficos de suporte",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "d4imq0r6k",
+            "text": "Guia de uso da marca",
+            "status": "todo",
+            "note": ""
+          },
+          {
+            "id": "vhdf6a025",
+            "text": "Entrega do pacote de arquivos final",
+            "status": "todo",
+            "note": ""
+          }
+        ]
+      }
+    ],
+    "packageName": "",
+    "packageDetail": ""
+  },
+  {
     "id": "1781811322789",
     "created_at": "2026-06-18T19:35:22.789Z",
     "description": "",
