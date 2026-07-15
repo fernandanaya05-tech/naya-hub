@@ -13,20 +13,8 @@
         "color": "blue",
         "items": [
           {
-            "id": "5x1wrojmz",
-            "text": "pesquisa de registro",
-            "status": "todo",
-            "note": ""
-          },
-          {
             "id": "17g9qy219",
             "text": "tom de voz",
-            "status": "todo",
-            "note": ""
-          },
-          {
-            "id": "33iwz39a8",
-            "text": "público alvo",
             "status": "todo",
             "note": ""
           },
