@@ -13,12 +13,6 @@
         "color": "blue",
         "items": [
           {
-            "id": "0bevzlmsq",
-            "text": "concorrência direta",
-            "status": "todo",
-            "note": ""
-          },
-          {
             "id": "ah1kdmwrm",
             "text": "concorrência indireta",
             "status": "todo",
